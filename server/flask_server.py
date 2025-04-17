@@ -1,32 +1,28 @@
 from flask import Flask, request, jsonify
 from controller.pid_controller import PIDController
+from utils.config import SHARED
 
 # flask 앱
 app = Flask(__name__)
-model = YOLO('yolov8n.pt')
 pid = PIDController()
+shared = SHARED
 
-speed_data = []
-target_speed = 0.0
 
-# tank_val_ms = 0.0
-tank_val_kh = 0.0
 
 @app.route('/info', methods=['POST'])
 def info():
-    # global tank_val_ms
-    global tank_val_kh
-    print("sss")
-    
     data = request.get_json(force=True)
+    shared['tank_cur_val_ms'] = data['playerSpeed']
+    shared['tank_cur_val_kh'] = data['playerSpeed']*3.6
+    
     if not data:
         return jsonify({"error": "No JSON received"}), 400
 
     # print("📨 /info data received:", data)
     
     # tank_val_ms = data['playerSpeed']
-    tank_val_kh = data['playerSpeed']*3.6
-    speed_data.append(tank_val_kh)
+    # tank_val_kh = data['playerSpeed']*3.6
+    # speed_data.append(tank_val_kh)
     
     # print("📨 /info data received:", data['time'])
     # print('tank_speed: {0:.2f} m/s'.format(data['playerSpeed']))
@@ -85,8 +81,50 @@ def get_move():
     # d_error_val_kh = (val_error_kh - error_pre_val_kh)/dt
     
     # control = val_error_kh*kp_val + d_error_val_kh*kd_val
-    control = pid.compute(target_speed, tank_val_kh)
+    print('uuuuuuuu', shared['tank_tar_val_kh'])
+    control = pid.compute(shared['tank_tar_val_kh'], shared['tank_cur_val_kh'])
     
+    if control > 0:
+        return jsonify({"move": "W", "weight": control})
+    elif control < 0:
+        return jsonify({"move": "S", "weight": -control})
+    else:
+        return jsonify({"move": "STOP"})
+    # 
+
+    # # print('controller output: {0}'.format(control))
+    # return jsonify({"move": "W", "weight": control})
+
+
+@app.route('/get_action', methods=['GET'])
+def get_action():
+    # global action_command
+    # if 1:
+        #command = action_command.pop(0)
+        # print(f"🔫 Action Command: {command}")
+    #     return jsonify(0)
+    # else:
+        #return jsonify({"turret": "", "weight": 0.0})
+        # return jsonify({"hh":'hi'})
+    return jsonify({"hh":'hi'})
     
-    # print('controller output: {0}'.format(control))
-    return jsonify({"move": "W", "weight": control})
+@app.route('/start', methods=['GET'])
+def start():
+    # print("🚀 /start command received")
+    # return jsonify({"control": ""})
+    return jsonify({"hh":'hi'})
+
+@app.route('/update_position', methods=['POST'])
+def update_position():
+    # data = request.get_json()
+    # if not data or "position" not in data:
+    #     return jsonify({"status": "ERROR", "message": "Missing position data"}), 400
+
+    # try:
+    #     x, y, z = map(float, data["position"].split(","))
+    #     current_position = (int(x), int(z))
+    #     # print(f"📍 Position updated: {current_position}")
+    #     return jsonify({"status": "OK", "current_position": current_position})
+    # except Exception as e:
+    #     return jsonify({"status": "ERROR", "message": str(e)}), 400
+    return jsonify({"hh":'hi'})
