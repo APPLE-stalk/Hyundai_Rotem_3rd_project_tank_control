@@ -4,7 +4,13 @@ SHARED = {
     "tank_cur_val_kh": 0.0,
     "tank_tar_val_kh": 0.0,
     
-    "speed_data": []
+    "speed_data": [],
+    
+    "pid": {
+        "kp": 0.1525,#0.0515,
+        "ki": 0.0,
+        "kd": 0.18#0.0
+    }
 }
 
 # # PID 제어기 기본 파라미터
