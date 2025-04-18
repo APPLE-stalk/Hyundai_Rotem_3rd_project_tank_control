@@ -8,7 +8,7 @@ def create_dash_app():
     shared = SHARED
 
     # 초기 PID 값 설정
-    shared['pid'] = {'kp': 0.07, 'ki': 0.0, 'kd': 0.0}
+    shared['pid'] = {'kp': 0.5, 'ki': 0.0, 'kd': 0.05}
 
     app.layout = html.Div([
         html.H4("실시간 속도 시각화"),
@@ -50,7 +50,19 @@ def create_dash_app():
         data = shared['speed_data'][-100:]
         return {
             'data': [go.Scatter(y=data, mode='lines+markers')],
-            'layout': go.Layout(yaxis=dict(range=[0, 80]))
+            'layout': go.Layout(
+                xaxis=dict(
+                    range=[max(0, len(data) - 100), len(data)],
+                    dtick=10,  # x축 눈금 간격
+                    title='시간 (포인트)'
+                ),
+                yaxis=dict(
+                    range=[0, 80],
+                    dtick=10,  # y축 눈금 간격
+                    title='속도 (km/h)'
+                ),
+                title='실시간 속도 시각화'
+            )
         }
 
     @app.callback(
