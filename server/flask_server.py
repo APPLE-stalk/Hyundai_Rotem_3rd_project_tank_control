@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from controller.pid_controller import PIDController
 from utils.config import SHARED
 from models.yolo_model import ObjectDetector
+import numpy as np
 # flask 앱
 app = Flask(__name__)
 pid = PIDController()
@@ -16,8 +17,44 @@ def info():
     
     # print("📨 /info data received:", data['time'])
     
-    shared['tank_cur_val_ms'] = data['playerSpeed']
-    shared['tank_cur_val_kh'] = data['playerSpeed']*3.6
+    # 경도 추가 25_04_20 -> 2차원 헤딩 정보로 전후진 구분 기능 추가하기
+    # print('x: ', data['playerPos']['x'])
+    # print('y: ', data['playerPos']['y'])
+    # print('z: ', data['playerPos']['z'])
+    
+    
+    # 위치 delta 구하기, [현재 위치 - 이전 위치]
+    del_playerPos_x = data['playerPos']['x'] - shared['pre_playerPos']['x']
+    del_playerPos_z = data['playerPos']['z'] - shared['pre_playerPos']['z']
+    
+    
+    # 전후진 구분 알고리즘 개발 용 시각화 리스트, 리스트는 알고리즘 동작에는 필요 없음
+    shared['del_playerPos_x'].append(del_playerPos_x)
+    shared['del_playerPos_z'].append(del_playerPos_z)
+    
+    
+    # 이동 벡터
+    v_move = np.array([del_playerPos_x, del_playerPos_z]) 
+    
+
+    # 월드 좌표계 기준의 전차의 yaw(deg -> 라디안)
+    yaw_deg = data['playerBodyX']
+    yaw_rad = np.deg2rad(90 - yaw_deg)
+
+    # 월드 좌표계 기준의 전차의 yaw(deg -> 라디안)의 벡터화
+    v_forward = np.array([np.cos(yaw_rad), np.sin(yaw_rad)])  
+
+    # 방향 판단
+    moving_direction = np.sign(np.dot(v_forward, v_move)) # 두 벡터 내적 이용, +1: 전진, -1: 후진
+    
+    
+    # 알고리즘 말단부, 최신 정보로 업데이트
+    shared['pre_playerPos']['x'] = data['playerPos']['x']
+    shared['pre_playerPos']['z'] = data['playerPos']['z']
+
+    
+    shared['tank_cur_val_ms'] = data['playerSpeed']*moving_direction # 전후진 고려
+    shared['tank_cur_val_kh'] = data['playerSpeed']*3.6*moving_direction # 전후진 고려
     shared['speed_data'].append(shared['tank_cur_val_kh'])
     
     if not data:
@@ -92,33 +129,15 @@ def get_move():
     # return jsonify({"move": "W", "weight": control})
     }
     
-    # 후진 감속 pid 제어기    
-    # print('uuuuuuuu', shared['tank_tar_val_kh'])
-    # control = pid.compute(shared['tank_tar_val_kh'], shared['tank_cur_val_kh'])
-    # if control > 0:
-    #     return jsonify({"move": "W", "weight": control})
-    # elif control < 0:
-    #     return jsonify({"move": "S", "weight": -control})
-    
-    
-    # 가감속 구분 pid 제어기
-    # print('ttttttttttt', data['time'])
-    # control = pid.compute(shared['tank_tar_val_kh'], shared['tank_cur_val_kh'])
-    # if shared['tank_cur_val_kh'] > shared['tank_tar_val_kh']:
-    # # 감속 PID: 감속에 더 강한 반응을 주는 별도 PID 혹은 상수 weight 사용
-    #     return {"move": "S", "weight": -1*control}
-
-    # elif shared['tank_cur_val_kh'] < shared['tank_tar_val_kh']:
-    #     # 가속 PID
-    #     return {"move": "W", "weight": control}
-    
+    # 속도 제어기(PID)
     control = pid.compute(shared['tank_tar_val_kh'], shared['tank_cur_val_kh'])
     
     print('control: ', control)
-    if control < 0:
-        return {"move": "S", "weight": (-1)*control}
-    else:
+    if control > 0:
         return {"move": "W", "weight": control}
+    
+    else:
+        return {"move": "S", "weight": (-1)*control}
     
 
 

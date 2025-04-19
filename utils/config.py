@@ -1,4 +1,14 @@
 SHARED = {
+    'pre_playerPos': {
+        'x':0,
+        # 'y':0,
+        'z':0
+    },
+    
+    'del_playerPos_x': [],
+    'del_playerPos_z': [],
+    
+    
     "tank_cur_val_ms": 0.0,
     
     "tank_cur_val_kh": 0.0,

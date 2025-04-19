@@ -16,14 +16,14 @@ def create_dash_app():
         dcc.Interval(id='interval', interval=500, n_intervals=0),
 
         html.Div([
-            html.Label("타겟 속도 (0~70 km/h)"),
+            html.Label("타겟 속도 (-30~70 km/h)"),
             dcc.Slider(
                 id='target-speed-slider',
-                min=0,
+                min=-30,
                 max=70,
                 step=1,
                 value=0,
-                marks={i: f"{i} km/h" for i in range(0, 71, 10)}
+                marks={i: f"{i} km/h" for i in range(-30, 71, 10)}
             )
         ], style={'margin-top': '20px'}),
 
@@ -38,8 +38,13 @@ def create_dash_app():
             html.Label("Kd:"),
             dcc.Input(id='input-kd', type='number', value=0.0, step=0.0001),
         ], style={'margin-top': '10px', 'margin-bottom': '10px'}),
+        
+        html.Div(id='pid-display', style={'font-weight': 'bold'}),
 
-        html.Div(id='pid-display', style={'font-weight': 'bold'})
+        html.H4("전차 위치 변화량 (ΔX, ΔZ)", style={'margin-top': '40px'}),
+        dcc.Graph(id='delta-pos-graph')
+
+        # html.Div(id='pid-display', style={'font-weight': 'bold'})
     ])
 
     @app.callback(
@@ -48,6 +53,7 @@ def create_dash_app():
     )
     def update_graph(n):
         data = shared['speed_data'][-100:]
+        
         return {
             'data': [go.Scatter(y=data, mode='lines+markers')],
             'layout': go.Layout(
@@ -57,7 +63,7 @@ def create_dash_app():
                     title='시간 (포인트)'
                 ),
                 yaxis=dict(
-                    range=[0, 80],
+                    range=[-40, 80],
                     dtick=10,  # y축 눈금 간격
                     title='속도 (km/h)'
                 ),
@@ -65,6 +71,28 @@ def create_dash_app():
             )
         }
 
+    # 경도 추가 25_04_19
+    # 축에 평행한 상태에서 1km/h에서 전후진 시 request 시간별 변위 시각화, 측정 용도
+    @app.callback(
+        Output('delta-pos-graph', 'figure'),
+        Input('interval', 'n_intervals')
+    )
+    def update_delta_graph(n):
+        del_x_data = shared.get('del_playerPos_x', [])[-100:]
+        del_z_data = shared.get('del_playerPos_z', [])[-100:]
+        return {
+            'data': [
+                go.Scatter(y=del_x_data, mode='lines', name='ΔX', line=dict(dash='dot')),
+                go.Scatter(y=del_z_data, mode='lines', name='ΔZ', line=dict(dash='dash'))
+            ],
+            'layout': go.Layout(
+                xaxis=dict(title='시간 (포인트)', dtick=10, range=[max(0, len(del_x_data) - 100), len(del_x_data)]),
+                # yaxis=dict(title='좌표 변화량', dtick=1),
+                title='전차 위치 변화량 (ΔX, ΔZ)',
+                legend=dict(orientation='h')
+            )
+    }
+    
     @app.callback(
         Output('target-speed-display', 'children'),
         Input('target-speed-slider', 'value')
