@@ -3,12 +3,15 @@ from dash.dependencies import Output, Input, State
 import plotly.graph_objs as go
 from utils.config import SHARED
 
+
+
 def create_dash_app():
     app = Dash(__name__)
     shared = SHARED
 
     # 초기 PID 값 설정
-    shared['pid'] = {'kp': 0.5, 'ki': 0.0, 'kd': 0.05}
+
+    # shared['pid'] = {'kp': 0.5, 'ki': 0.0, 'kd': 0.05, 'dt': 0.2}
 
     app.layout = html.Div([
         html.H4("실시간 속도 시각화"),
@@ -32,11 +35,11 @@ def create_dash_app():
         html.H4("PID 파라미터 조정 (Kp, Ki, Kd)"),
         html.Div([
             html.Label("Kp:"),
-            dcc.Input(id='input-kp', type='number', value=0.0515, step=0.0001),
+            dcc.Input(id='input-kp', type='number', value=shared['vel_pid']['kp'], step=0.0001),
             html.Label("Ki:"),
-            dcc.Input(id='input-ki', type='number', value=0.0, step=0.0001),
+            dcc.Input(id='input-ki', type='number', value=shared['vel_pid']['ki'], step=0.0001),
             html.Label("Kd:"),
-            dcc.Input(id='input-kd', type='number', value=0.0, step=0.0001),
+            dcc.Input(id='input-kd', type='number', value=shared['vel_pid']['kd'], step=0.0001),
         ], style={'margin-top': '10px', 'margin-bottom': '10px'}),
         
         html.Div(id='pid-display', style={'font-weight': 'bold'}),
@@ -52,7 +55,7 @@ def create_dash_app():
         Input('interval', 'n_intervals')
     )
     def update_graph(n):
-        data = shared['speed_data'][-100:]
+        data = shared['vel_data'][-100:]
         
         return {
             'data': [go.Scatter(y=data, mode='lines+markers')],
@@ -78,8 +81,8 @@ def create_dash_app():
         Input('interval', 'n_intervals')
     )
     def update_delta_graph(n):
-        del_x_data = shared.get('del_playerPos_x', [])[-100:]
-        del_z_data = shared.get('del_playerPos_z', [])[-100:]
+        del_x_data = shared.get('del_playerPos', {}).get('x', [])[-100:]
+        del_z_data = shared.get('del_playerPos', {}).get('z', [])[-100:]
         return {
             'data': [
                 go.Scatter(y=del_x_data, mode='lines', name='ΔX', line=dict(dash='dot')),
@@ -98,7 +101,7 @@ def create_dash_app():
         Input('target-speed-slider', 'value')
     )
     def update_target_speed_display(val):
-        shared['tank_tar_val_kh'] = val
+        shared['tank_tar_vel_kh'] = val
         return f"현재 타겟 속도: {val} km/h"
 
     @app.callback(
@@ -108,9 +111,9 @@ def create_dash_app():
         Input('input-kd', 'value')
     )
     def update_pid_values(kp, ki, kd):
-        shared['pid']['kp'] = kp
-        shared['pid']['ki'] = ki
-        shared['pid']['kd'] = kd
+        shared['vel_pid']['kp'] = kp
+        shared['vel_pid']['ki'] = ki
+        shared['vel_pid']['kd'] = kd
         return f"PID 값 - Kp: {kp}, Ki: {ki}, Kd: {kd}"
 
     return app

@@ -5,21 +5,33 @@ SHARED = {
         'z':0
     },
     
-    'del_playerPos_x': [],
-    'del_playerPos_z': [],
+    'del_playerPos':{
+        'x': [],
+        'z': []
+    },
+    # 'del_playerPos_x': [],
+    # 'del_playerPos_z': [],
     
     
-    "tank_cur_val_ms": 0.0,
+    "tank_cur_vel_ms": 0.0,
     
-    "tank_cur_val_kh": 0.0,
-    "tank_tar_val_kh": 0.0,
+    "tank_cur_vel_kh": 0.0,
+    "tank_tar_vel_kh": 0.0,
     
-    "speed_data": [],
+    "vel_data": [],
     
-    "pid": {
+    "vel_pid": {
         "kp": 0.5,#0.1525,#0.0515,
         "ki": 0.0,
         "kd": 0.05,#0.18#0.0
+        "dt": 0.2 # 고정 값
+    },
+    
+    "yaw_pid": {
+        "kp": 0.5,#0.1525,#0.0515,
+        "ki": 0.0,
+        "kd": 0.05,#0.18#0.0
+        "dt": 0.2 # 고정 값
     }
 }
 

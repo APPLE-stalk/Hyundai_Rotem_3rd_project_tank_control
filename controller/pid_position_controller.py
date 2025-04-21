@@ -1,5 +1,5 @@
-class PIDController:
-    def __init__(self, kp=0.0, ki=0.0, kd=0.0, dt=0.0):
+class PID_Position_Controller:
+    def __init__(self, kp = 0.0, ki = 0.0, kd = 0.0, dt = 0.0):
         self.kp = kp
         self.kd = kd
         self.ki = ki
@@ -33,13 +33,11 @@ class PIDController:
         return output
     
     
-    def update_gains(self, kp=None, ki=None, kd=None, dt=None): 
+    def update_gains(self, kp=None, ki=None, kd=None):
         if kp is not None:
             self.kp = kp
         if ki is not None:
             self.ki = ki
         if kd is not None:
             self.kd = kd
-        if dt is not None:
-            self.dt = dt
             

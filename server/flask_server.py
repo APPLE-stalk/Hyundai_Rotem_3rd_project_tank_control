@@ -5,7 +5,7 @@ from models.yolo_model import ObjectDetector
 import numpy as np
 # flask 앱
 app = Flask(__name__)
-pid = PIDController()
+vel_pid = PIDController()
 shared = SHARED
 
 detector = ObjectDetector()
@@ -29,8 +29,8 @@ def info():
     
     
     # 전후진 구분 알고리즘 개발 용 시각화 리스트, 리스트는 알고리즘 동작에는 필요 없음
-    shared['del_playerPos_x'].append(del_playerPos_x)
-    shared['del_playerPos_z'].append(del_playerPos_z)
+    shared['del_playerPos']['x'].append(del_playerPos_x)
+    shared['del_playerPos']['z'].append(del_playerPos_z)
     
     
     # 이동 벡터
@@ -53,9 +53,9 @@ def info():
     shared['pre_playerPos']['z'] = data['playerPos']['z']
 
     
-    shared['tank_cur_val_ms'] = data['playerSpeed']*moving_direction # 전후진 고려
-    shared['tank_cur_val_kh'] = data['playerSpeed']*3.6*moving_direction # 전후진 고려
-    shared['speed_data'].append(shared['tank_cur_val_kh'])
+    shared['tank_cur_vel_ms'] = data['playerSpeed']*moving_direction # 전후진 고려
+    shared['tank_cur_vel_kh'] = data['playerSpeed']*3.6*moving_direction # 전후진 고려
+    shared['vel_data'].append(shared['tank_cur_vel_kh'])
     
     if not data:
         return jsonify({"error": "No JSON received"}), 400
@@ -72,10 +72,11 @@ def info():
 
 @app.route('/get_move', methods=['GET'])
 def get_move():
-    pid.update_gains(
-    kp=shared['pid']['kp'],
-    ki=shared['pid']['ki'],
-    kd=shared['pid']['kd']
+    vel_pid.update_gains(
+    kp=shared['vel_pid']['kp'],
+    ki=shared['vel_pid']['ki'],
+    kd=shared['vel_pid']['kd'],
+    dt=shared['vel_pid']['dt'] # dt는 고정값이라 업데이트 생략
     )
     
     # global move_command
@@ -85,54 +86,14 @@ def get_move():
     #     return jsonify(command)
     # else:
     #     return jsonify({"move": "STOP", "weight": 1.0})
-
-
-    # 하드코딩 제어기
-    {
-    # global tank_val_ms
-    # global tank_val_kh
-    
-    # global error_pre_val_kh
-    # global val_error_kh
-    # global target_val_kh
-    # global dt
-    # global speed_data
-    # kd_val = 0.0
-
-    # target_val_kh = 60 # 0.08
-    # kp_val = 0.18
-    
-    # target_val_kh = 50 # 0.08
-    # kp_val = 0.152
-    
-    # target_val_kh = 40 # 0.08
-    # kp_val = 0.0915
-    
-    # target_val_kh = 30 # 0.08
-    # kp_val = 0.0699
-    
-    # target_val_kh = 20 # 0.08
-    # kp_val = 0.068
-    
-    # target_val_kh = 10 
-    # kp_val = 0.068
-    
-    # speed_data.append(tank_val_kh)
-    
-    # val_error_kh = target_val_kh-tank_val_kh
-    
-    # d_error_val_kh = (val_error_kh - error_pre_val_kh)/dt
-    
-    # control = val_error_kh*kp_val + d_error_val_kh*kd_val
-    
-    # 하드코딩
-    # return jsonify({"move": "W", "weight": control})
-    }
     
     # 속도 제어기(PID)
-    control = pid.compute(shared['tank_tar_val_kh'], shared['tank_cur_val_kh'])
+    control = vel_pid.compute(shared['tank_tar_vel_kh'], shared['tank_cur_vel_kh'])
     
     print('control: ', control)
+    print('p', vel_pid.kp)
+    print('d', vel_pid.kd)
+    print(shared['tank_tar_vel_kh'])
     if control > 0:
         return {"move": "W", "weight": control}
     
