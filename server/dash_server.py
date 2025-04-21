@@ -2,6 +2,7 @@ from dash import Dash, dcc, html
 from dash.dependencies import Output, Input, State
 import plotly.graph_objs as go
 from utils.config import SHARED
+import numpy as np
 
 
 
@@ -45,9 +46,41 @@ def create_dash_app():
         html.Div(id='pid-display', style={'font-weight': 'bold'}),
 
         html.H4("전차 위치 변화량 (ΔX, ΔZ)", style={'margin-top': '40px'}),
-        dcc.Graph(id='delta-pos-graph')
+        dcc.Graph(id='delta-pos-graph'),
 
         # html.Div(id='pid-display', style={'font-weight': 'bold'})
+        
+        # 경도 추가 25_04_21 steer 관련
+        html.H4("현재 각도 (deg)", style={'margin-top': '40px'}),
+        dcc.Graph(id='steer-gauge'),
+        
+        html.H4("타겟 각도 조절 (deg)"),
+        dcc.Slider(
+            id='target-angle-slider',
+            min=-180, max=180, step=1, value=0,
+            marks={
+                -180: '-180°',
+                -90: '-90°',
+                0: '0°',
+                90: '90°',
+                180: '180°'
+                # 0: '0°',
+                # 90: '90°',
+                # 180: '180°',
+                # 270: '270°',
+                # 360: '360°'
+            }
+        ),
+        html.Div(id='target-angle-display', style={'font-weight': 'bold', 'margin-top': '10px'}),
+
+        html.H4("Yaw PID 파라미터 조정 (Kp, Ki, Kd)", style={'margin-top': '30px'}),
+        html.Div([
+            html.Label("Kp:"), dcc.Input(id='steer-kp', type='number', value=shared['steer_pid']['kp'], step=0.0001),
+            html.Label("Ki:"), dcc.Input(id='steer-ki', type='number', value=shared['steer_pid']['ki'], step=0.0001),
+            html.Label("Kd:"), dcc.Input(id='steer-kd', type='number', value=shared['steer_pid']['kd'], step=0.0001),
+        ], style={'margin-top': '10px', 'margin-bottom': '10px'}),
+        html.Div(id='steer-pid-display', style={'font-weight': 'bold'}),
+        
     ])
 
     @app.callback(
@@ -115,5 +148,72 @@ def create_dash_app():
         shared['vel_pid']['ki'] = ki
         shared['vel_pid']['kd'] = kd
         return f"PID 값 - Kp: {kp}, Ki: {ki}, Kd: {kd}"
+    
+    
+    # 경도 추가 25_04_21_steer 관련
+    @app.callback(
+        Output('steer-gauge', 'figure'),
+        Input('interval', 'n_intervals')
+    )
+    def update_steer_gauge(n):
+        angle = shared.get('tank_cur_yaw_deg', 0)
+        
+        # 파란 점: 현재 angle 방향으로 r=0~1까지 49개 점
+        r_values_blue = np.linspace(0, 0.98, 49)
+        theta_values_blue = [angle] * len(r_values_blue)
+        blue_dots = go.Scatterpolar(
+            r=r_values_blue,
+            theta=theta_values_blue,
+            mode='markers',
+            marker=dict(size=3, color='blue'),
+            name='angle path'
+        )
+        # 빨간 점: r=1 위치에 하나만 찍기
+        red_tip = go.Scatterpolar(
+            r=[1],
+            theta=[angle],
+            mode='markers',
+            marker=dict(size=10, color='red'),
+            name='current direction'
+        )
+
+        return {
+        'data': [blue_dots, red_tip],
+        'layout': go.Layout(
+            polar=dict(
+                radialaxis=dict(visible=False),
+                angularaxis=dict(
+                    direction='clockwise',
+                    rotation=90,
+                    tickmode='array',
+                    tickvals=[0, 90, 180, 270],
+                    ticktext=['0°', '90°', '180°', '270°']
+                )
+            ),
+            showlegend=False,
+            title='현재 전차 각도 (나침반)'
+        )
+    }
+        
+    @app.callback(
+        Output('target-angle-display', 'children'),
+        Input('target-angle-slider', 'value')
+    )
+    def update_target_angle_display(angle):
+        shared['tank_tar_yaw_deg'] = angle
+        return f"현재 타겟 각도: {shared['tank_tar_yaw_deg']}°"
+
+
+    @app.callback(
+        Output('steer-pid-display', 'children'),
+        Input('steer-kp', 'value'),
+        Input('steer-ki', 'value'),
+        Input('steer-kd', 'value')
+    )
+    def update_yaw_pid(kp, ki, kd):
+        shared['steer_pid']['kp'] = kp
+        shared['steer_pid']['ki'] = ki
+        shared['steer_pid']['kd'] = kd
+        return f"steer PID 값 - Kp: {kp}, Ki: {ki}, Kd: {kd}"
 
     return app
