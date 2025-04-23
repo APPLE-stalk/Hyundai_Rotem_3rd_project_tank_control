@@ -90,8 +90,12 @@ def create_dash_app():
     def update_graph(n):
         data = shared['vel_data'][-100:]
         
+        # 현재 설정된 타깃 속도(없으면 0) ― 같은 길이의 리스트로 확장
+        target_vel = shared.get('tank_tar_vel_kh', 0)
+        target_line = [target_vel] * len(data)
+        
         return {
-            'data': [go.Scatter(y=data, mode='lines+markers')],
+            'data': [go.Scatter(y=target_line, mode='lines+markers', name='target_vel', line=dict(color='red')), go.Scatter(y=data, mode='lines+markers', name='current_vel', line=dict(color='blue'),)],
             'layout': go.Layout(
                 xaxis=dict(
                     range=[max(0, len(data) - 100), len(data)],
@@ -157,6 +161,17 @@ def create_dash_app():
     )
     def update_steer_gauge(n):
         angle = shared.get('tank_cur_yaw_deg', 0)
+        target_angle = shared.get('tank_tar_yaw_deg', 0)
+        
+        # 주황색 점 – 타깃 방향 팁
+        orange_dot = go.Scatterpolar(
+            r=[1],
+            theta=[target_angle],
+            mode='markers',
+            marker=dict(size=10, color='orange'),
+            name='target direction'
+        )
+        
         
         # 파란 점: 현재 angle 방향으로 r=0~1까지 49개 점
         r_values_blue = np.linspace(0, 0.98, 49)
@@ -176,9 +191,11 @@ def create_dash_app():
             marker=dict(size=10, color='red'),
             name='current direction'
         )
+        
+        
 
         return {
-        'data': [blue_dots, red_tip],
+        'data': [orange_dot, blue_dots, red_tip],
         'layout': go.Layout(
             polar=dict(
                 radialaxis=dict(visible=False),
@@ -190,7 +207,7 @@ def create_dash_app():
                     ticktext=['0°', '90°', '180°', '270°']
                 )
             ),
-            showlegend=False,
+            showlegend=True,
             title='현재 전차 각도 (나침반)'
         )
     }

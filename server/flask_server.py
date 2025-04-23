@@ -79,8 +79,11 @@ def info():
     #    return jsonify({"stsaatus": "success", "control": "reset"})
     return jsonify({"status": "success", "control": ""})
 
+send_steer_next = False # client가 하나의 명령어만 받을 수 있으므로, 전후진/조향 번갈아가며 전송
 @app.route('/get_move', methods=['GET'])
 def get_move():
+    global send_steer_next
+    
     body_vel_pid.update_gains(
     kp=shared['vel_pid']['kp'],
     ki=shared['vel_pid']['ki'],
@@ -125,8 +128,20 @@ def get_move():
     print('dddddd', body_steer_pid.kd)
     print('control output: ', steer_control)
 
+    if not send_steer_next:
+        send_steer_next = True  # 다음엔 조향 보내기
+        if vel_control > 0:
+            return {"move": "W", "weight": vel_control}
+        else:
+            return {"move": "S", "weight": -vel_control}
+    else:
+        send_steer_next = False  # 다음엔 전후진 보내기
+        if steer_control > 0:
+            return {"move": "D", "weight": steer_control}
+        else:
+            return {"move": "A", "weight": -steer_control}
     
-    move_command.clear()
+    # move_command.clear()
     
     # if vel_control > 0:
     #     # return {"move": "W", "weight": vel_control}
@@ -136,17 +151,17 @@ def get_move():
     #     # return {"move": "S", "weight": (-1)*vel_control}
     #     move_command.append({'move':'S', 'weight': (-1)*vel_control})
     
-    if steer_control > 0:
-        return {"move": "D", "weight": steer_control}
-        # move_command.append({'move':'A', 'weight': steer_control})
+    # if steer_control > 0:
+    #     # return {"move": "D", "weight": steer_control}
+    #     move_command.append({'move':'D', 'weight': steer_control})
     
-    else:
-        return {"move": "A", "weight": (-1)*steer_control}
-        # move_command.append({'move':'D', 'weight': (-1)*steer_control})
+    # else:
+    #     # return {"move": "A", "weight": (-1)*steer_control}
+    #     move_command.append({'move':'A', 'weight': (-1)*steer_control})
     
     
-    print(move_command)
-    # return move_command
+    # print(move_command)
+    # return jsonify(move_command)
     # return jsonify({'move':'STOP'})
 
 
